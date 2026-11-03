@@ -1,5 +1,10 @@
 # indian-day-trade-skill
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-green.svg)](https://www.python.org/)
+[![NSE](https://img.shields.io/badge/Exchange-NSE-orange.svg)](https://www.nseindia.com/)
+[![No dependencies](https://img.shields.io/badge/Deps-stdlib%20only-lightgrey.svg)](requirements.txt)
+
 Production-grade **paper-trading infrastructure** for NSE (National Stock Exchange of India) day trading. Systematic Opening Range Breakout (ORB) with dual-feed market data, crash-safe execution, backtest validation gates, and per-lane risk management.
 
 > **This is engineering infrastructure, not a profitable strategy.** It demonstrates how to build *reliable* trading systems: feed failover under throttling, exact-restart recovery after crashes, a 10,000-replay backtest gate before every entry, and a paper ledger with full audit trails. Most open-source trading tools are US-focused; this is built for India's market structure from the ground up.
@@ -7,6 +12,17 @@ Production-grade **paper-trading infrastructure** for NSE (National Stock Exchan
 *Keywords: algorithmic trading, NSE, National Stock Exchange of India, intraday trading, day trading, paper trading, backtesting, market data API, Python trading bot, Indian stock market, systematic trading, quantitative trading, ORB strategy, opening range breakout, Upstox API, Yahoo Finance, risk management, portfolio*
 
 📖 **[Full architecture →](docs/architecture.md)** — the complete pipeline: sources → discovery → validation → execution → settlement, with data-flow diagrams, failure modes, and design decisions.
+
+## How it works
+
+```mermaid
+flowchart TD
+    A[Market Data<br/>Upstox / Yahoo] --> B[Discovery<br/>Scanner + Sentiment + Crowd]
+    B --> C[Validation<br/>10K-replay backtest gate]
+    C -->|Pass| D[Execution<br/>ORB engine + paper ledger]
+    C -->|Fail| E[Shadow tracking<br/>learn from vetoes]
+    D --> F[Settlement<br/>Bhavcopy official closes]
+```
 
 ## Data feed options
 
@@ -82,6 +98,31 @@ python examples/basic_orb.py RELIANCE
 ## Status & roadmap
 
 Active development. The system runs daily paper-trading sessions; components are extracted here as they stabilise. Planned: full engine loop, prep-session orchestration, shadow-tracking analytics.
+
+## FAQ
+
+**Is this a profitable trading strategy?**
+No. This is infrastructure for *building and testing* strategies reliably. The ORB example is a starting template, not a proven edge. Paper-trade any strategy for weeks before considering real capital.
+
+**Why no broker integration?**
+Deliberate. The paper phase validates feeds, gates, risk, and recovery without financial risk. Wiring up live orders is a separate decision with real consequences — it shouldn't happen by accident in a library.
+
+**Can I use this for US markets?**
+The architecture (dual-feed, backtest gate, paper ledger) is transferable, but the components are NSE-specific: IST session times, Upstox feed, Hinglish sentiment, Bhavcopy settlement. You'd need to swap the feed and calendar layers.
+
+**How is this different from backtesting libraries like Backtrader or Zipline?**
+Those are *backtesting frameworks* — you bring the strategy, they simulate history. This is *live-system infrastructure* — feed failover, crash recovery, validation gates, and a paper ledger for running against real-time data. Complementary, not competing.
+
+**What does the 10,000-replay gate actually do?**
+Before any live entry, the setup is simulated 10,000 times against 60 days of 5-minute bars. It enters only if the target-first rate beats breakeven *and* average R is non-negative. If historical data is unavailable, the gate vetoes (fail-closed) rather than guessing.
+
+## Contributing
+
+Pull requests welcome. Keep these principles:
+- **Paper-first:** no broker order integration in PRs.
+- **Fail-closed:** new validations veto on uncertainty, never guess.
+- **No credentials:** tokens in env vars, never in code or tests.
+- **Explain the why:** every non-obvious choice gets a comment.
 
 ## Disclaimer
 
