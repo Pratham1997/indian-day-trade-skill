@@ -5,6 +5,8 @@
 [![NSE](https://img.shields.io/badge/Exchange-NSE-orange.svg)](https://www.nseindia.com/)
 [![No dependencies](https://img.shields.io/badge/Deps-stdlib%20only-lightgrey.svg)](requirements.txt)
 
+> Trade NSE like a machine, not a gambler — paper-trading infra with dual feeds, a 10,000-replay lie detector for every setup, and crash-proof execution. India's market, engineered.
+
 Production-grade **paper-trading infrastructure** for NSE (National Stock Exchange of India) day trading. Systematic Opening Range Breakout (ORB) with dual-feed market data, crash-safe execution, backtest validation gates, and per-lane risk management.
 
 > **This is engineering infrastructure, not a profitable strategy.** It demonstrates how to build *reliable* trading systems: feed failover under throttling, exact-restart recovery after crashes, a 10,000-replay backtest gate before every entry, and a paper ledger with full audit trails. Most open-source trading tools are US-focused; this is built for India's market structure from the ground up.
@@ -21,8 +23,16 @@ flowchart TD
     B --> C[Validation<br/>10K-replay backtest gate]
     C -->|Pass| D[Execution<br/>ORB engine + paper ledger]
     C -->|Fail| E[Shadow tracking<br/>learn from vetoes]
-    D --> F[Settlement<br/>Bhavcopy official closes]
+    D --> F[Settlement<br/>Official EOD closes]
 ```
+
+## Who is this for
+
+- **Builders** learning how real trading infrastructure works — feed handling, validation gates, crash recovery — beyond textbook backtests.
+- **NSE traders** who want a systematic starting point for intraday strategies, with honest risk defaults.
+- **AI agent users** who want to point Claude/ChatGPT at a repo and get a working paper-trading setup without writing boilerplate.
+
+**Not for:** anyone looking for a ready-made profitable strategy, live order execution, or US-market tooling.
 
 ## Data feed options
 
