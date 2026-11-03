@@ -4,6 +4,23 @@ Production-grade paper-trading infrastructure for NSE (National Stock Exchange o
 
 **This is engineering infrastructure, not a profitable strategy.** It shows how to build reliable trading systems: feed failover under throttling, exact-restart recovery, backtest validation gates, and a paper ledger. Most open-source trading tools are US-focused; this is built for India's market structure from the ground up.
 
+## How to use this skill
+
+You are an AI agent helping a user set up or run paper trading on NSE. Follow these steps:
+
+1. **Read `docs/architecture.md` first** — it explains the full pipeline (sources → discovery → validation → execution → settlement) so you understand how components connect.
+2. **Set up the feed** — ask the user for their Upstox Analytics Token (free, see `docs/setup.md`), or fall back to Yahoo for historical-only work. Never ask for broker login credentials.
+3. **Start with `examples/basic_orb.py`** — run it to verify the feed works before building anything custom.
+4. **Use the modules, don't rewrite them** — import from `feed/`, `engine/`, `discovery/`, `data/` rather than reimplementing. The edge cases (Cloudflare UA, 5-min aggregation, fail-closed gate) are already handled.
+5. **Paper only** — this skill has no broker integration by design. If the user asks about live trading, explain the paper phase comes first and do not wire up order placement.
+
+## Key constraints to respect
+
+- **NSE session:** 09:15–15:30 IST. Nothing trades outside this window.
+- **Risk defaults:** 1% per trade, 3 trades/day max, 1 open position, flat by 15:20 IST. Tighten, never loosen, without the user's explicit instruction.
+- **Fail-closed:** if market data is unavailable, do not trade. Report the outage, don't guess prices.
+- **No credentials in code:** tokens go in environment variables, never in files.
+
 ## Repository structure
 
 ```

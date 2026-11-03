@@ -6,18 +6,22 @@ Production-grade **paper-trading infrastructure** for NSE (National Stock Exchan
 
 📖 **[Full architecture →](docs/architecture.md)** — the complete pipeline: sources → discovery → validation → execution → settlement, with data-flow diagrams.
 
-## Why Upstox?
+## Data feed options
 
-The feed question is the hardest part of retail Indian market data. Here's the reasoning:
+Pick the feed that fits your setup. The router (`feed/router.py`) defaults to Upstox → Yahoo fallback.
 
-- **Free, no auth wall for the basics:** Upstox offers a read-only Analytics Token (1-year validity, free with a demat account). No monthly subscription, no credit card.
-- **Real intraday candles:** 1-minute candles via a documented REST API — not scraped, not delayed beyond normal exchange feed latency.
-- **Sane rate limits:** 50 requests/sec, 500/min, 2000/30min. Enough to poll ~90 symbols every 60 seconds without hitting walls.
-- **Yahoo as fallback:** Yahoo Finance (`*.NS`) needs no auth and works for historical ranges, but it throttles aggressively under sustained polling (token-bucket, walls after ~30 min of heavy use). So Yahoo is the *fallback* for live bars and the *primary* for historical backfill — each feed doing what it's best at.
+| Feed | Cost | One-line pro |
+|------|------|--------------|
+| **Upstox** | Free (Analytics Token, 1-yr, read-only) | Proper REST API with 1-min candles and sane rate limits — best free option |
+| **Yahoo Finance** | Free, no auth | Zero setup, works for historical backfill — throttles under sustained live polling |
+| **Kite Connect** | ₹2,000/mo | Official Zerodha API, reliable — expensive for paper trading |
+| **Groww** | ₹499/mo + GST | Clean API — paid tier only for market data |
+| **DhanHQ** | ₹499/mo + tax | Good API — paid tier only |
+| **Angel One SmartAPI** | Free | Free with account — workable backup |
+| **Twelve Data** | Free tier: 800 credits/day | Global coverage — too thin for intraday NSE polling |
+| **Alpha Vantage** | Free tier: 25 req/day | Simple — unusable for live polling |
 
-**The Cloudflare gotcha:** Upstox's WAF bans Python's default `urllib` User-Agent (HTTP 403, Error 1010). Every request must carry a browser User-Agent. This is the kind of thing that costs you an afternoon — it's handled in [`feed/upstox_feed.py`](feed/upstox_feed.py).
-
-Alternatives evaluated and rejected: Kite Connect (₹2,000/mo), DhanHQ (₹499/mo), Groww (₹499/mo), Twelve Data free tier (800 credits/day — too thin), Alpha Vantage (25 req/day).
+**Gotcha:** Upstox's Cloudflare WAF bans Python's default `urllib` User-Agent (HTTP 403). Every request must carry a browser User-Agent — handled in [`feed/upstox_feed.py`](feed/upstox_feed.py).
 
 ## Repository structure
 
@@ -52,6 +56,10 @@ Alternatives evaluated and rejected: Kite Connect (₹2,000/mo), DhanHQ (₹499/
 5. **Settlement** — Bhavcopy official closes are the price of record; the paper ledger reconciles every event.
 
 ## Quick start
+
+**With an AI agent (Claude, ChatGPT, etc.):** paste this repo's link and ask it to set up the system for you — e.g. *"Set up the indian-day-trade-skill repo for paper trading RELIANCE on NSE."* The [SKILL.md](SKILL.md) gives the agent everything it needs: architecture, feed setup, strategy rules, and risk parameters.
+
+**Manual:**
 
 ```bash
 # 1. Get a free Upstox Analytics Token (see docs/setup.md)
