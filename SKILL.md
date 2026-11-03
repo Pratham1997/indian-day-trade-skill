@@ -29,14 +29,16 @@ You are an AI agent helping a user set up or run paper trading on NSE. Follow th
 │   ├── yahoo_feed.py   # Yahoo fallback + historical
 │   └── router.py       # Dual-feed router
 ├── engine/             # Execution
+│   ├── lanes.py        # Dual-lane engine — Track A (systematic) + Track B (hero)
 │   ├── ledger.py       # Paper P&L with risk management
 │   └── timemachine.py  # Backtest validation gate (10k replays)
 ├── discovery/          # Idea generation
 │   ├── scanner.py      # Universe → ORB candidates (5 setups)
-│   ├── sentiment.py    # English + Hinglish lexicon scorers
+│   ├── heroes.py       # Catalyst scoring rubric (Track B entries)
+│   ├── sentiment.py    # English + Hinglish lexicon scorers (research only)
 │   └── crowd.py        # Telegram + Google Trends signals
 ├── data/               # Reference data
-│   ├── nse_official.py # Bhavcopy settlement referee
+│   ├── nse_official.py # Official EOD closes referee
 │   └── results_calendar.py  # Earnings blocklist
 ├── docs/
 │   ├── architecture.md # Full infrastructure explained

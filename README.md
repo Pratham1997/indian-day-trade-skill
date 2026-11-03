@@ -19,11 +19,14 @@ Production-grade **paper-trading infrastructure** for NSE (National Stock Exchan
 
 ```mermaid
 flowchart TD
-    A[Market Data<br/>Upstox / Yahoo] --> B[Discovery<br/>Scanner + Sentiment + Crowd]
+    A[Market Data<br/>Upstox / Yahoo] --> B[Discovery<br/>Scanner + Heroes + Sentiment + Crowd]
     B --> C[Validation<br/>10K-replay backtest gate]
-    C -->|Pass| D[Execution<br/>ORB engine + paper ledger]
-    C -->|Fail| E[Shadow tracking<br/>learn from vetoes]
-    D --> F[Settlement<br/>Official EOD closes]
+    C --> D{Which track?}
+    D -->|Track A| E[Systematic ORB<br/>1% risk, gate required]
+    D -->|Track B| F[Hero entries<br/>0.5% risk, catalyst-driven]
+    C -->|Gate fail| G[Shadow tracking<br/>learn from vetoes]
+    E --> H[Settlement<br/>Official EOD closes]
+    F --> H
 ```
 
 ## Who is this for
@@ -59,6 +62,7 @@ Pick the feed that fits your setup. The router (`feed/router.py`) defaults to Up
 │   ├── yahoo_feed.py        # Yahoo fallback + historical
 │   └── router.py            # Dual-feed router (Upstox → Yahoo)
 ├── engine/                  # Execution
+│   ├── lanes.py             # Dual-lane engine (Track A + Track B)
 │   ├── ledger.py            # Paper P&L, position sizing, risk guards
 │   └── timemachine.py       # Backtest gate — 10k replays before entry
 ├── discovery/               # Idea generation
@@ -66,7 +70,7 @@ Pick the feed that fits your setup. The router (`feed/router.py`) defaults to Up
 │   ├── sentiment.py         # English + Hinglish lexicon scorers
 │   └── crowd.py             # Telegram + Google Trends signals
 ├── data/                    # Reference data
-│   ├── nse_official.py      # Bhavcopy EOD settlement referee
+│   ├── nse_official.py      # Official EOD closes referee
 │   └── results_calendar.py  # Earnings blocklist
 ├── docs/
 │   ├── architecture.md      # Full infrastructure explained
@@ -75,13 +79,15 @@ Pick the feed that fits your setup. The router (`feed/router.py`) defaults to Up
     └── basic_orb.py         # Minimal runnable ORB example
 ```
 
-## How it works
+## How it works (detailed)
 
-1. **Discovery** — the scanner narrows ~1,000 liquid NSE names to ORB candidates; sentiment and crowd signals add context.
+1. **Discovery** — the scanner narrows ~1,000 liquid NSE names to ORB candidates; hero scoring ranks catalyst-driven names; sentiment and crowd signals add context.
 2. **Validation** — every setup replays 10,000 times on 60 days of 5-minute history. Entry only if target-first rate beats breakeven *and* average R ≥ 0. The gate **fails closed**: no data → no trade.
-3. **Execution** — opening range 09:15–09:30 IST, trigger on first close above OR high, stop at OR midpoint, 2R target. Polls every 60s.
-4. **Risk** — 1% per trade (0.5% after 3 consecutive losses), max 3 trades/day, 1 open position, flat by 15:20 IST.
-5. **Settlement** — Bhavcopy official closes are the price of record; the paper ledger reconciles every event.
+3. **Execution — two tracks:**
+   - **Track A (systematic):** pure ORB. Trigger on first close above OR high, stop at OR midpoint, 2R target, 1% risk. Backtest gate must pass.
+   - **Track B (hero):** catalyst-driven entries on names scoring ≥ 4 on the hero rubric (filed catalysts, promoter buying, news clusters, crowd spikes). Same ORB mechanics, 0.5% risk, gate recorded but not blocking. Max 5 heroes/day.
+4. **Risk** — separate ₹50,000 pools per track. Track A: 3% daily soft cap. Track B: 1.5% daily soft cap. Max 3 trades/day/lane, 1 open position per lane, never the same symbol in both lanes, flat by 15:20 IST.
+5. **Settlement** — Official EOD closes are the price of record; the paper ledger reconciles every event.
 
 ## Quick start
 
@@ -118,7 +124,7 @@ No. This is infrastructure for *building and testing* strategies reliably. The O
 Deliberate. The paper phase validates feeds, gates, risk, and recovery without financial risk. Wiring up live orders is a separate decision with real consequences — it shouldn't happen by accident in a library.
 
 **Can I use this for US markets?**
-The architecture (dual-feed, backtest gate, paper ledger) is transferable, but the components are NSE-specific: IST session times, Upstox feed, Hinglish sentiment, Bhavcopy settlement. You'd need to swap the feed and calendar layers.
+The architecture (dual-feed, backtest gate, paper ledger) is transferable, but the components are NSE-specific: IST session times, Upstox feed, Hinglish sentiment, Official EOD closes. You'd need to swap the feed and calendar layers.
 
 **How is this different from backtesting libraries like Backtrader or Zipline?**
 Those are *backtesting frameworks* — you bring the strategy, they simulate history. This is *live-system infrastructure* — feed failover, crash recovery, validation gates, and a paper ledger for running against real-time data. Complementary, not competing.

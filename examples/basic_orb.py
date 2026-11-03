@@ -7,15 +7,16 @@ Usage:
 """
 
 import sys
-sys.path.insert(0, "src")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from upstox_feed import get_5min_bars
-from ledger import Ledger
+from feed.router import get_bars
+from engine.ledger import Ledger
 
 
 def main(symbol):
-    bars = get_5min_bars(symbol)
-    print(f"{symbol}: {len(bars)} 5-min bars")
+    meta, bars = get_bars(symbol)
+    print(f"{symbol}: {len(bars)} 5-min bars (via {meta['source']})")
 
     # Opening range: first three bars (09:15, 09:20, 09:25)
     or_high = max(b["high"] for b in bars[:3])
@@ -30,7 +31,8 @@ def main(symbol):
             entry = bar["close"]
             stop = round((or_high + or_low) / 2, 2)
             target = round(entry + 2 * (entry - stop), 2)
-            pos = ledger.open_trade(symbol, entry, stop, target)
+            pos = ledger.open_trade(symbol, entry, stop, target,
+                                    date_str=bars[0]["dt"].strftime("%Y-%m-%d"))
             print(f"ENTRY {pos['shares']} @ {entry:.2f} | stop {stop:.2f} | target {target:.2f} | risk {pos['risk_pct']}%")
             break
     else:

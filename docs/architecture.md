@@ -74,7 +74,7 @@ This document is the technical reference for the system: component interfaces, d
                                         ▼
                               ┌─────────────────────┐
                               │ SETTLEMENT (data/)  │
-                              │ Bhavcopy referee    │
+                              │ Official EOD closes    │
                               │ Results blocklist   │
                               └─────────────────────┘
 ```
@@ -187,6 +187,8 @@ Two scorers, **never blended**:
 
 **Why separate:** English financial news and Hinglish retail chatter are different populations saying different things. Blending them destroys the signal. Each returns −1.0 to +1.0 independently.
 
+**Scope note:** sentiment is a research-layer signal. It informs the watchlist; it does not gate entries, trigger trades, or override the backtest gate. Track A would behave identically with sentiment unplugged.
+
 ### 3.4 `crowd.py` — social signals
 
 - **Telegram momentum:** mentions/hour vs 7-day baseline per channel. 3×+ = spike.
@@ -224,7 +226,25 @@ A pre-market catalyst note (filed ≤ 24h, or promoter buy ≤ 7d) can override 
 
 ## 5. Execution layer (`engine/`)
 
-### 5.1 The ORB loop
+### 5.1 Dual-lane design (`lanes.py`)
+
+The system runs **two independent tracks**, each with its own capital pool, risk limits, and entry logic:
+
+| | Track A (systematic) | Track B (hero) |
+|---|---|---|
+| **Capital pool** | ₹50,000 | ₹50,000 |
+| **Risk per trade** | 1% (0.5% after 3 consecutive losses) | 0.5% |
+| **Daily loss soft cap** | 3% | 1.5% |
+| **Max trades/day** | 3 | 3 |
+| **Backtest gate** | Required — must pass | Recorded, not blocking |
+| **Entry basis** | ORB trigger | Hero score ≥ 4 |
+| **Max heroes/day** | — | 5 |
+
+**Cross-lane guard:** the same symbol can never be held in both lanes simultaneously. If Track A holds RELIANCE, Track B skips it even with a hero score of 7.
+
+**Why two tracks:** Track A tests whether systematic ORB has edge. Track B tests whether catalyst-driven discretionary selection adds alpha on top. Separate P&L means each hypothesis gets its own verdict — they don't contaminate each other.
+
+### 5.2 Track A — the ORB loop
 
 ```
 09:15–09:30  Establish OR from first 3 completed 5-min bars
@@ -244,7 +264,34 @@ A pre-market catalyst note (filed ≤ 24h, or promoter buy ≤ 7d) can override 
 
 **Polling cadence:** 60s idle, 30s in position, 25s when price is within 0.3% of trigger (near-trigger band). Only *completed* bars are evaluated — never the forming bar.
 
-### 5.2 `ledger.py` — paper ledger
+### 5.3 Track B — hero entries
+
+Track B entries come from the hero scoring rubric (see §3.2), not from ORB triggers. A hero entry uses the **same ORB mechanics** (stop at OR midpoint, 2R target) but the *reason* for entry is catalyst-driven:
+
+**Data sources feeding hero signals** (types, not specific channels):
+- **NSE corporate announcements** — filed catalysts, board meeting outcomes, regulatory filings
+- **Promoter/insider activity** — bulk and block deal disclosures, insider buying reports
+- **News clusters** — 5+ articles in 24h on the same name from financial press
+- **Social momentum** — retail chatter spikes on messaging and social platforms
+- **Price-volume anomalies** — unusual delivery percentages, circuit-adjacent moves
+
+**Hero rubric** (score ≥ 4 to enter, max 5/day):
+
+| Signal | Points |
+|--------|--------|
+| Filed catalyst ≤ 24h | +3 |
+| Promoter/insider BUY ≤ 7d | +3 |
+| News cluster ≥ 5 articles/24h | +2 |
+| Crowd spike (shared, never stacks) | +2 |
+| Credible bulk/block buy | +1 |
+| Euphoria (overbought + hype) | −2 |
+| Filed negative (downgrade, fraud, regulatory) | −3 |
+
+**Hard exclusions** (never a hero regardless of score): circuit lock, illiquid (<1M volume), results today or tomorrow.
+
+**Kill criteria:** if Track B's average R is negative after ≥10 hero trades while Track A is non-negative, the lane closes. The experiment tests the hypothesis; it doesn't protect it.
+
+### 5.4 `ledger.py` — paper ledger
 
 **Position sizing:**
 ```
@@ -273,9 +320,9 @@ shares = floor(risk_amount / (entry − stop))
 
 ## 6. Settlement layer (`data/`)
 
-### 6.1 `nse_official.py` — Bhavcopy referee
+### 6.1 `nse_official.py` — Official EOD closes
 
-The Bhavcopy (published ~18:00 IST) is the exchange's official end-of-day record. Any position still open at 15:20 force-flat settles at the Bhavcopy close — not the last traded price seen by the feed. This is the **price of record** for P&L.
+NSE publishes official closing prices ~18:00 IST (the "Bhavcopy" file). Any position still open at 15:20 force-flat settles at the official close — not the last traded price seen by the feed. This is the **price of record** for P&L.
 
 ### 6.2 `results_calendar.py` — earnings blocklist
 
@@ -332,7 +379,7 @@ The 60s poll interval is the binding constraint: a full Upstox cycle fits inside
 
 **Fail-closed everywhere.** Every validation, every feed, every gate: when in doubt, don't trade. A missed opportunity costs nothing in paper trading; a bad fill corrupts the experiment.
 
-**India-specific, not ported.** NSE session times, IST timezone handling, Hinglish sentiment, Upstox feed quirks, Bhavcopy settlement, ₹-denominated risk — these aren't adaptations of a US system, they're the starting point.
+**India-specific, not ported.** NSE session times, IST timezone handling, Hinglish sentiment, Upstox feed quirks, Official EOD closes, ₹-denominated risk — these aren't adaptations of a US system, they're the starting point.
 
 **Transparent over clever.** Additive hero rubric, lexicon sentiment, rule-based ORB. Every decision is auditable. When something fails, you know *which rule* failed — which is how the system improves.
 

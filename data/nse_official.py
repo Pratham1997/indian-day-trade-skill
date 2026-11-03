@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""NSE official data — Bhavcopy end-of-day settlement referee.
+"""NSE official data — official EOD closing prices as the price of record.
 
-The Bhavcopy (published ~18:00 IST daily) is the official record of
-closing prices. Stale positions settle at the Bhavcopy close;
-the paper ledger reconciles against it.
+NSE publishes official closing prices ~18:00 IST daily (the "Bhavcopy" file).
+Any position still open at the 15:20 force-flat settles at the official
+close — not the last traded price seen by the feed. The paper ledger
+reconciles against these.
 
 Download: https://www.nseindia.com/all-reports
 """
 
 
-def bhavcopy_url(date_str):
-    """Bhavcopy download URL for YYYY-MM-DD."""
+def official_close_url(date_str):
+    """Official EOD file download URL for YYYY-MM-DD."""
     # Format: cmDDMMMYYYYbhav.csv.zip, e.g. cm03NOV2026bhav.csv.zip
     from datetime import datetime
     dt = datetime.strptime(date_str, "%Y-%m-%d")
@@ -19,6 +20,6 @@ def bhavcopy_url(date_str):
             f"{dt.year}/{dt.strftime('%b').upper()}/cm{stamp}bhav.csv.zip")
 
 
-def settle_at_close(symbol, bhavcopy_close):
+def settle_at_close(symbol, official_close):
     """Returns the official settlement price for a stale position."""
-    return bhavcopy_close
+    return official_close
