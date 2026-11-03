@@ -4,7 +4,9 @@ Production-grade **paper-trading infrastructure** for NSE (National Stock Exchan
 
 > **This is engineering infrastructure, not a profitable strategy.** It demonstrates how to build *reliable* trading systems: feed failover under throttling, exact-restart recovery after crashes, a 10,000-replay backtest gate before every entry, and a paper ledger with full audit trails. Most open-source trading tools are US-focused; this is built for India's market structure from the ground up.
 
-📖 **[Full architecture →](docs/architecture.md)** — the complete pipeline: sources → discovery → validation → execution → settlement, with data-flow diagrams.
+*Keywords: algorithmic trading, NSE, National Stock Exchange of India, intraday trading, day trading, paper trading, backtesting, market data API, Python trading bot, Indian stock market, systematic trading, quantitative trading, ORB strategy, opening range breakout, Upstox API, Yahoo Finance, risk management, portfolio*
+
+📖 **[Full architecture →](docs/architecture.md)** — the complete pipeline: sources → discovery → validation → execution → settlement, with data-flow diagrams, failure modes, and design decisions.
 
 ## Data feed options
 
