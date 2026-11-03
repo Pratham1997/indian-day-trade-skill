@@ -1,0 +1,9 @@
+# Token and secrets — never commit
+UPSTOX_TOKEN
+.env
+*.key
+
+# Cache
+.upstox_cache/
+__pycache__/
+*.pyc
